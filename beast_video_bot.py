@@ -619,8 +619,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         style_key = data.replace("style_", "")
         if style_key in STYLES:
             state["style"] = style_key
+            style_info = STYLES[style_key]
             await query.edit_message_text(
-                f"✅ Stil promenjen: **{STYLES[style_key]['name']}**",
+                f"✅ **Stil promenjen: {style_info['name']}**\n\n"
+                f"Sada pošalji prompt i slika će biti generisana u ovom stilu!\n\n"
+                f"📐 Trenutni format: {state['ratio']}",
                 parse_mode="Markdown"
             )
     
@@ -872,8 +875,54 @@ async def action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif query.data == "action_regen":
         if state.get("last_prompt"):
-            await query.message.reply_text(f"🔄 Regenerišem: {state['last_prompt']}")
-            # TODO: regenerate
+            prompt = state["last_prompt"]
+            
+            # Prevedi i primeni stil
+            translated_prompt = translate_to_english(prompt)
+            styled_prompt = apply_style(translated_prompt, state["style"])
+            
+            # Dobij dimenzije
+            width, height = ASPECT_RATIOS.get(state["ratio"], (1024, 1024))
+            style_name = STYLES[state["style"]]["name"]
+            
+            # Status poruka
+            status_msg = await query.message.reply_text(
+                f"🔄 **Regenerišem sliku...**\n\n"
+                f"📝 Prompt: _{prompt}_\n"
+                f"🎭 Stil: {style_name}\n"
+                f"📐 Format: {state['ratio']}",
+                parse_mode="Markdown"
+            )
+            
+            try:
+                image_path, provider_name, error = await generate_image(styled_prompt, width, height)
+                
+                if image_path:
+                    state["last_image"] = image_path
+                    state["generation_count"] += 1
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("🎥 Animiraj", callback_data="action_animate"),
+                         InlineKeyboardButton("🔄 Regeneriši", callback_data="action_regen")]
+                    ]
+                    
+                    with open(image_path, 'rb') as f:
+                        await query.message.reply_photo(
+                            photo=f,
+                            caption=f"🔄 **Regenerisano!**\n\n"
+                                   f"📝 _{prompt}_\n"
+                                   f"🎭 Stil: {style_name}\n"
+                                   f"⚙️ Provider: {provider_name}",
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup(keyboard)
+                        )
+                    await status_msg.delete()
+                else:
+                    await status_msg.edit_text(f"❌ Regenerisanje nije uspelo:\n{error[:200]}")
+            except Exception as e:
+                await status_msg.edit_text(f"❌ Greška: {str(e)[:200]}")
+        else:
+            await query.message.reply_text("❌ Nema prethodnog prompta za regeneraciju!")
 
 # ═══════════════════════════════════════════════════════════
 # MAIN
