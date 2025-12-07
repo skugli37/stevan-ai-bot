@@ -672,7 +672,7 @@ async def video_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Status poruka
     status_msg = await update.message.reply_text(
         f"🎬 **Generišem video...**\n\n"
-        f"📝 Prompt: _{prompt}_\n"
+        f"📝 Prompt: _{prompt[:100]}_\n"
         f"🔄 Rotiram kroz 4 video providera...\n\n"
         f"⏳ Ovo može potrajati 2-5 minuta...",
         parse_mode="Markdown"
@@ -687,7 +687,7 @@ async def video_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_video(
                     video=video_path,
                     caption=f"🎬 **Video generisan!**\n\n"
-                           f"📝 _{prompt}_\n"
+                           f"📝 _{prompt[:100]}_\n"
                            f"⚙️ Provider: {provider_name}",
                     parse_mode="Markdown"
                 )
@@ -696,7 +696,7 @@ async def video_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_video(
                         video=f,
                         caption=f"🎬 **Video generisan!**\n\n"
-                               f"📝 _{prompt}_\n"
+                               f"📝 _{prompt[:100]}_\n"
                                f"⚙️ Provider: {provider_name}",
                         parse_mode="Markdown"
                     )
@@ -786,7 +786,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     style_name = STYLES[state["style"]]["name"]
     status_msg = await update.message.reply_text(
         f"🎨 **Generišem sliku...**\n\n"
-        f"📝 Prompt: _{prompt}_\n"
+        f"📝 Prompt: _{prompt[:100]}_\n"
         f"🎭 Stil: {style_name}\n"
         f"📐 Format: {state['ratio']}\n"
         f"🔄 Rotiram kroz 8 providera...",
@@ -812,7 +812,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_photo(
                     photo=f,
                     caption=f"🖼️ **Slika generisana!**\n\n"
-                           f"📝 _{prompt}_\n"
+                           f"📝 _{prompt[:100]}_\n"
                            f"🎭 Stil: {style_name}\n"
                            f"⚙️ Provider: {provider_name}",
                     parse_mode="Markdown",
@@ -888,7 +888,7 @@ async def action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Status poruka
             status_msg = await query.message.reply_text(
                 f"🔄 **Regenerišem sliku...**\n\n"
-                f"📝 Prompt: _{prompt}_\n"
+                f"📝 Prompt: _{prompt[:100]}_\n"
                 f"🎭 Stil: {style_name}\n"
                 f"📐 Format: {state['ratio']}",
                 parse_mode="Markdown"
@@ -910,7 +910,7 @@ async def action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         await query.message.reply_photo(
                             photo=f,
                             caption=f"🔄 **Regenerisano!**\n\n"
-                                   f"📝 _{prompt}_\n"
+                                   f"📝 _{prompt[:100]}_\n"
                                    f"🎭 Stil: {style_name}\n"
                                    f"⚙️ Provider: {provider_name}",
                             parse_mode="Markdown",
