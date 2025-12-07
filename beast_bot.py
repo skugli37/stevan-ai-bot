@@ -539,10 +539,22 @@ def _generate_video_sync(image_path: str) -> str:
                 api_name=provider["api"]
             )
             
+            # Result is (dict(video=path), seed) - extract video path
+            if isinstance(result, tuple):
+                video_data = result[0]
+            else:
+                video_data = result
+                
+            # Extract actual path from dict
+            if isinstance(video_data, dict) and "video" in video_data:
+                video_path = video_data["video"]
+            else:
+                video_path = video_data
+            
             # Rotate for next time
             video_provider_index = (video_provider_index + 1) % len(VIDEO_PROVIDERS)
-            logging.info(f"✅ Video done with {provider['name']}")
-            return result
+            logging.info(f"✅ Video done with {provider['name']}: {video_path}")
+            return video_path
             
         except Exception as e:
             error_msg = str(e)[:80]
