@@ -1,10 +1,9 @@
-name: Telegram Bot 24/7
+name: 🔥 BEAST AI Bot 24/7
 
 on:
   push:
     branches: [main]
   schedule:
-    # Svaka 5 sati restart (GitHub limit je 6h)
     - cron: '0 */5 * * *'
   workflow_dispatch:
 
@@ -12,19 +11,21 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     timeout-minutes: 350
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
+
     - name: Install dependencies
       run: |
-        pip install python-telegram-bot gradio_client deep-translator Pillow
-    
-    - name: Run Bot
+        pip install --upgrade pip
+        pip install python-telegram-bot gradio_client deep-translator Pillow aiohttp httpx
+
+    - name: Run BEAST VIDEO Bot
       run: |
-        timeout 20000 python beast_bot.py || true
+        echo "🔥 Starting BEAST AI Bot with VIDEO support..."
+        timeout 19800 python beast_video_bot.py || echo "Session ended"
