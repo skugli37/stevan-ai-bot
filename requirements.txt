@@ -1,4 +1,6 @@
 python-telegram-bot>=20.0
-gradio_client
-deep-translator
-Pillow
+gradio_client>=0.10.0
+deep-translator>=1.11.4
+Pillow>=10.0.0
+aiohttp>=3.9.0
+httpx>=0.25.0
