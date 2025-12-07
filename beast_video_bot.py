@@ -157,7 +157,7 @@ VIDEO_PROVIDERS = [
     }
 ]
 
-# Statistike providera
+# Statistike providera - Updated 1765122305
 provider_stats = {
     "image": {p["name"]: {"success": 0, "fail": 0, "last_fail": 0} for p in IMAGE_PROVIDERS},
     "video": {p["name"]: {"success": 0, "fail": 0, "last_fail": 0} for p in VIDEO_PROVIDERS}
