@@ -149,46 +149,11 @@ IMAGE_PROVIDERS = [
 
 VIDEO_PROVIDERS = [
     {
-        "name": "CogVideoX-5B",
-        "space": "THUDM/CogVideoX-5B-Space",
-        "type": "text2video",
-        "api": "/generate",
-        "emoji": "🎬"
-    },
-    {
         "name": "Stable Video Diffusion",
         "space": "stabilityai/stable-video-diffusion",
         "type": "img2video",
         "api": "/video",
         "emoji": "🎥"
-    },
-    {
-        "name": "AnimateDiff-Lightning",
-        "space": "ByteDance/AnimateDiff-Lightning",
-        "type": "text2video",
-        "api": "/generate",
-        "emoji": "⚡"
-    },
-    {
-        "name": "Wan2.1-T2V",
-        "space": "Wan-AI/Wan2.1-T2V-1.3B",
-        "type": "text2video",
-        "api": "/generate",
-        "emoji": "🌊"
-    },
-    {
-        "name": "Open-Sora",
-        "space": "hpcai-tech/Open-Sora",
-        "type": "text2video",
-        "api": "/generate_video",
-        "emoji": "🎞️"
-    },
-    {
-        "name": "I2VGen-XL",
-        "space": "damo-vilab/i2vgen-xl",
-        "type": "img2video",
-        "api": "/infer",
-        "emoji": "🎪"
     }
 ]
 
