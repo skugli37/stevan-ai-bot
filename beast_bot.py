@@ -1269,84 +1269,12 @@ async def admin_addcredits(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Added {amount} credits to {user_id}")
 
 # ============ MAIN ============
-# ============ VIDEO COMMAND ============
-async def video_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Generate video from text prompt"""
-    if not context.args:
-        await update.message.reply_text(
-            "🎬 **VIDEO GENERATOR**\n\n"
-            "Koristi: `/video [prompt]`\n\n"
-            "Primer:\n"
-            "• `/video A cat dancing in the rain`\n"
-            "• `/video Cyberpunk city at night`\n\n"
-            "Ili pošalji sliku da je animiram! 🖼️➡️🎬",
-            parse_mode='Markdown'
-        )
-        return
-    
-    prompt = " ".join(context.args)
-    prompt_en = translate_to_english(prompt)
-    
-    await update.message.chat.send_action("record_video")
-    
-    status = await update.message.reply_text(
-        f"🎬 **Generišem video...**\n\n"
-        f"📝 `{prompt[:50]}`\n"
-        f"🌐 `{prompt_en[:50]}`\n\n"
-        f"⏱ Ovo traje 30-60 sekundi...",
-        parse_mode='Markdown'
-    )
-    
-    try:
-        video_path = await generate_video(prompt)
-        
-        await update.message.reply_video(
-            video=open(video_path, 'rb'),
-            caption=f"🎬 **{prompt[:100]}**",
-            parse_mode='Markdown'
-        )
-        await status.delete()
-        
-    except Exception as e:
-        await status.edit_text(f"❌ Greška: {str(e)[:100]}\n\nProbaj ponovo!")
-        logger.error(f"Video error: {e}")
-
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Animate uploaded photo to video"""
-    await update.message.chat.send_action("record_video")
-    
-    status = await update.message.reply_text(
-        "🎬 **Animiram sliku...**\n\n"
-        "⏱ Ovo traje 30-60 sekundi...",
-        parse_mode='Markdown'
-    )
-    
-    try:
-        # Download photo
-        photo = update.message.photo[-1]
-        file = await context.bot.get_file(photo.file_id)
-        
-        image_path = f"/tmp/photo_{update.effective_user.id}.jpg"
-        await file.download_to_drive(image_path)
-        
-        # Animate
-        video_path = await animate_image(image_path)
-        
-        await update.message.reply_video(
-            video=open(video_path, 'rb'),
-            caption="🎬 **Animirana slika!**",
-            parse_mode='Markdown'
-        )
-        await status.delete()
-        
-    except Exception as e:
-        await status.edit_text(f"❌ Greška: {str(e)[:100]}\n\nProbaj ponovo!")
-        logger.error(f"Animation error: {e}")
-
 def main():
     init_db()
     
     print("🔥 Starting BEAST AI ART BOT...")
+    print(f"📊 IMAGE providers: {len(IMAGE_PROVIDERS)}")
+    print(f"🎬 VIDEO providers: {len(VIDEO_PROVIDERS)}")
     
     app = Application.builder().token(BOT_TOKEN).build()
     
@@ -1380,66 +1308,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# ============ VIDEO GENERATION ============
-VIDEO_MODELS = {
-    "t2v_turbo": {
-        "name": "🎬 T2V-Turbo",
-        "id": "TIGER-Lab/T2V-Turbo-V2",
-        "desc": "Text to Video, 4 sec"
-    },
-    "svd": {
-        "name": "🎥 Stable Video",
-        "id": "multimodalart/stable-video-diffusion",
-        "desc": "Image to Video"
-    }
-}
-
-def _generate_video_sync(prompt: str) -> str:
-    """Generate video from text"""
-    prompt_en = translate_to_english(prompt)
-    
-    client = Client("TIGER-Lab/T2V-Turbo-V2")
-    result = client.predict(
-        prompt=prompt_en,
-        guidance_scale=7.5,
-        percentage=0.5,
-        num_inference_steps=16,
-        num_frames=16,
-        seed=0,
-        randomize_seed=True,
-        param_dtype="bf16",
-        api_name="/predict"
-    )
-    return result[0]["video"]
-
-def _animate_image_sync(image_path: str) -> str:
-    """Animate image to video"""
-    client = Client("multimodalart/stable-video-diffusion")
-    result = client.predict(
-        image=image_path,
-        seed=0,
-        randomize_seed=True,
-        motion_bucket_id=127,
-        fps=6,
-        api_name="/video"
-    )
-    return result
-
-async def generate_video(prompt: str) -> str:
-    """Async text to video"""
-    try:
-        result = await asyncio.to_thread(_generate_video_sync, prompt)
-        return result
-    except Exception as e:
-        logging.error(f"Video error: {e}")
-        raise
-
-async def animate_image(image_path: str) -> str:
-    """Async image to video"""
-    try:
-        result = await asyncio.to_thread(_animate_image_sync, image_path)
-        return result
-    except Exception as e:
-        logging.error(f"Animation error: {e}")
-        raise
