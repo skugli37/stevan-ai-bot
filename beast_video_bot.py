@@ -26,6 +26,10 @@ from telegram.ext import (
     CallbackQueryHandler, filters, ContextTypes
 )
 from deep_translator import GoogleTranslator
+# HuggingFace Auth
+from huggingface_hub import login
+login(token=os.environ.get("HF_TOKEN", ""))
+
 
 # ═══════════════════════════════════════════════════════════
 # KONFIGURACIJA
@@ -148,6 +152,13 @@ IMAGE_PROVIDERS = [
 # ═══════════════════════════════════════════════════════════
 
 VIDEO_PROVIDERS = [
+    {
+        "name": "Pyramid-Flow",
+        "space": "Pyramid-Flow/pyramid-flow",
+        "type": "text2video",
+        "api": "/generate_video",
+        "emoji": "🎬"
+    },
     {
         "name": "Stable Video Diffusion",
         "space": "stabilityai/stable-video-diffusion",
@@ -373,47 +384,39 @@ async def generate_image(prompt: str, width: int, height: int) -> Tuple[Optional
 # ═══════════════════════════════════════════════════════════
 
 def generate_video_text2video_sync(prompt: str) -> Tuple[Optional[str], str, str]:
-    """Text to Video - Generiše sliku pa animira sa SVD"""
+    """Text to Video sa Pyramid-Flow"""
     from gradio_client import Client
     
-    errors = []
-    
     try:
-        # STEP 1: Generiši sliku iz prompta
-        logger.info(f"🎨 Step 1: Generating image from prompt...")
+        logger.info(f"🎬 Generating video with Pyramid-Flow...")
         
-        image_path, img_provider, img_error = generate_image_sync(prompt, 1024, 576)
+        client = Client("Pyramid-Flow/pyramid-flow", verbose=False)
         
-        if not image_path:
-            return None, "", f"Image generation failed: {img_error}"
-        
-        logger.info(f"✅ Image generated with {img_provider}")
-        
-        # STEP 2: Animiraj sliku sa SVD
-        logger.info(f"🎬 Step 2: Animating with Stable Video Diffusion...")
-        
-        svd_client = Client("stabilityai/stable-video-diffusion", verbose=False)
-        
-        result = svd_client.predict(
-            image=image_path,
-            seed=0,
-            randomize_seed=True,
-            motion_bucket_id=127,
-            fps_id=6,
-            api_name="/video"
+        result = client.predict(
+            prompt=prompt,
+            image=None,
+            duration=3,
+            guidance_scale=9,
+            video_guidance_scale=5,
+            frames_per_second=8,
+            api_name="/generate_video"
         )
         
-        video_path = result[0] if isinstance(result, (list, tuple)) else result
+        # Result je dict sa 'video' key
+        if isinstance(result, dict):
+            video_path = result.get('video')
+        else:
+            video_path = result
         
-        if video_path and (os.path.exists(str(video_path)) or str(video_path).startswith("http")):
+        if video_path and os.path.exists(str(video_path)):
             logger.info(f"✅ Video generated successfully!")
-            return str(video_path), f"{img_provider} + SVD", ""
+            return str(video_path), "Pyramid-Flow", ""
         
-        return None, "", "SVD returned no video"
+        return None, "", "Pyramid-Flow returned no video"
         
     except Exception as e:
         error_msg = str(e)[:200]
-        logger.warning(f"❌ T2V failed: {error_msg}")
+        logger.warning(f"❌ Pyramid-Flow failed: {error_msg}")
         return None, "", error_msg
 
 def generate_video_img2video_sync(image_path: str) -> Tuple[Optional[str], str, str]:
@@ -673,8 +676,8 @@ async def video_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_msg = await update.message.reply_text(
         f"🎬 **Generišem video...**\n\n"
         f"📝 Prompt: _{prompt[:100]}_\n"
-        f"🔄 Rotiram kroz 4 video providera...\n\n"
-        f"⏳ Ovo može potrajati 2-5 minuta...",
+        f"🎥 Provider: Pyramid-Flow\n\n"
+        f"⏳ Ovo traje ~60 sekundi...",
         parse_mode="Markdown"
     )
     
