@@ -408,120 +408,79 @@ async def generate_image(prompt: str, width: int, height: int) -> Tuple[Optional
 # ═══════════════════════════════════════════════════════════
 
 def generate_video_text2video_sync(prompt: str) -> Tuple[Optional[str], str, str]:
-    """Text to Video sa rotacijom"""
+    """Text to Video - Generiše sliku pa animira sa SVD"""
     from gradio_client import Client
     
-    providers = [p for p in get_best_provider("video") if p["type"] == "text2video"]
     errors = []
     
-    for provider in providers:
-        try:
-            logger.info(f"🎬 Trying T2V {provider['name']}...")
-            
-            client = Client(provider["space"], verbose=False)
-            
-            # Svaki provider ima drugačije parametre
-            if provider["name"] == "CogVideoX-5B":
-                result = client.predict(
-                    prompt=prompt,
-                    image_input=None,
-                    video_input=None,
-                    video_strength=0.8,
-                    seed_value=-1,
-                    scale_status=False,
-                    rife_status=False,
-                    api_name="/generate"
-                )
-            elif provider["name"] == "AnimateDiff-Lightning":
-                result = client.predict(
-                    prompt=prompt,
-                    base="Realistic Vision",
-                    step=4,
-                    api_name="/generate"
-                )
-            elif provider["name"] == "Wan2.1-T2V":
-                result = client.predict(
-                    prompt=prompt,
-                    negative_prompt="",
-                    seed=-1,
-                    api_name="/generate"
-                )
-            elif provider["name"] == "Open-Sora":
-                result = client.predict(
-                    prompt=prompt,
-                    resolution="480p",
-                    num_frames=16,
-                    api_name="/generate_video"
-                )
-            else:
-                result = client.predict(prompt=prompt, api_name=provider["api"])
-            
-            # Izvuci video path
-            video_path = result[0] if isinstance(result, (list, tuple)) else result
-            
-            if video_path and (os.path.exists(str(video_path)) or str(video_path).startswith("http")):
-                provider_stats["video"][provider["name"]]["success"] += 1
-                logger.info(f"✅ {provider['name']} VIDEO SUCCESS!")
-                return str(video_path), provider["name"], ""
-                
-        except Exception as e:
-            error_msg = str(e)[:100]
-            errors.append(f"{provider['name']}: {error_msg}")
-            provider_stats["video"][provider["name"]]["fail"] += 1
-            provider_stats["video"][provider["name"]]["last_fail"] = time.time()
-            logger.warning(f"❌ {provider['name']} failed: {error_msg}")
-            continue
-    
-    return None, "", "\n".join(errors)
+    try:
+        # STEP 1: Generiši sliku iz prompta
+        logger.info(f"🎨 Step 1: Generating image from prompt...")
+        
+        image_path, img_provider, img_error = generate_image_sync(prompt, 1024, 576)
+        
+        if not image_path:
+            return None, "", f"Image generation failed: {img_error}"
+        
+        logger.info(f"✅ Image generated with {img_provider}")
+        
+        # STEP 2: Animiraj sliku sa SVD
+        logger.info(f"🎬 Step 2: Animating with Stable Video Diffusion...")
+        
+        svd_client = Client("stabilityai/stable-video-diffusion", verbose=False)
+        
+        result = svd_client.predict(
+            image=image_path,
+            seed=0,
+            randomize_seed=True,
+            motion_bucket_id=127,
+            fps_id=6,
+            api_name="/video"
+        )
+        
+        video_path = result[0] if isinstance(result, (list, tuple)) else result
+        
+        if video_path and (os.path.exists(str(video_path)) or str(video_path).startswith("http")):
+            logger.info(f"✅ Video generated successfully!")
+            return str(video_path), f"{img_provider} + SVD", ""
+        
+        return None, "", "SVD returned no video"
+        
+    except Exception as e:
+        error_msg = str(e)[:200]
+        logger.warning(f"❌ T2V failed: {error_msg}")
+        return None, "", error_msg
 
 def generate_video_img2video_sync(image_path: str) -> Tuple[Optional[str], str, str]:
-    """Image to Video sa rotacijom"""
+    """Image to Video sa SVD"""
     from gradio_client import Client
     
-    providers = [p for p in get_best_provider("video") if p["type"] == "img2video"]
-    errors = []
-    
-    for provider in providers:
-        try:
-            logger.info(f"🎥 Trying I2V {provider['name']}...")
+    try:
+        logger.info(f"🎥 Animating image with Stable Video Diffusion...")
+        
+        client = Client("stabilityai/stable-video-diffusion", verbose=False)
+        
+        result = client.predict(
+            image=image_path,
+            seed=0,
+            randomize_seed=True,
+            motion_bucket_id=127,
+            fps_id=6,
+            api_name="/video"
+        )
+        
+        video_path = result[0] if isinstance(result, (list, tuple)) else result
+        
+        if video_path and (os.path.exists(str(video_path)) or str(video_path).startswith("http")):
+            logger.info(f"✅ SVD I2V SUCCESS!")
+            return str(video_path), "Stable Video Diffusion", ""
+        
+        return None, "", "SVD returned no video"
             
-            client = Client(provider["space"], verbose=False)
-            
-            if provider["name"] == "Stable Video Diffusion":
-                result = client.predict(
-                    image=image_path,
-                    seed=0,
-                    randomize_seed=True,
-                    motion_bucket_id=127,
-                    fps_id=6,
-                    api_name="/video"
-                )
-            elif provider["name"] == "I2VGen-XL":
-                result = client.predict(
-                    image=image_path,
-                    text_input="",
-                    seed=-1,
-                    api_name="/infer"
-                )
-            else:
-                result = client.predict(image=image_path, api_name=provider["api"])
-            
-            video_path = result[0] if isinstance(result, (list, tuple)) else result
-            
-            if video_path and (os.path.exists(str(video_path)) or str(video_path).startswith("http")):
-                provider_stats["video"][provider["name"]]["success"] += 1
-                logger.info(f"✅ {provider['name']} I2V SUCCESS!")
-                return str(video_path), provider["name"], ""
-                
-        except Exception as e:
-            error_msg = str(e)[:100]
-            errors.append(f"{provider['name']}: {error_msg}")
-            provider_stats["video"][provider["name"]]["fail"] += 1
-            provider_stats["video"][provider["name"]]["last_fail"] = time.time()
-            logger.warning(f"❌ {provider['name']} failed: {error_msg}")
-            continue
-    
-    return None, "", "\n".join(errors)
+    except Exception as e:
+        error_msg = str(e)[:200]
+        logger.warning(f"❌ SVD I2V failed: {error_msg}")
+        return None, "", error_msg
 
 async def generate_video_t2v(prompt: str) -> Tuple[Optional[str], str, str]:
     """Async Text to Video"""
