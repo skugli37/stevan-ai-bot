@@ -23,9 +23,11 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --upgrade pip
-        pip install python-telegram-bot gradio_client deep-translator Pillow aiohttp httpx
+        pip install python-telegram-bot gradio_client deep-translator Pillow aiohttp httpx huggingface_hub
 
     - name: Run BEAST VIDEO Bot
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
       run: |
         echo "🔥 Starting BEAST AI Bot with VIDEO support..."
         timeout 19800 python beast_video_bot.py || echo "Session ended"
