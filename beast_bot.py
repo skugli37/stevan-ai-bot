@@ -502,17 +502,16 @@ async def generate_image(prompt: str, model: str, style: str,
 
 # ============ VIDEO GENERATION ============
 # SVE besplatne video opcije sa rotacijom
+# Video provajderi - img2video sa rotacijom
 VIDEO_PROVIDERS = [
     {
-        "name": "T2V-Turbo",
-        "space": "TIGER-Lab/T2V-Turbo-V2",
-        "type": "text2video",
-        "api": "/predict",
+        "name": "SVD-Official",
+        "space": "stabilityai/stable-video-diffusion",
+        "api": "/video",
     },
     {
-        "name": "SVD",
-        "space": "stabilityai/stable-video-diffusion", 
-        "type": "img2video",
+        "name": "SVD-Multimodal",
+        "space": "multimodalart/stable-video-diffusion", 
         "api": "/video",
     },
 ]
@@ -520,16 +519,15 @@ VIDEO_PROVIDERS = [
 video_provider_index = 0
 
 def _generate_video_sync(image_path: str) -> str:
-    """Generate video from image - SA ROTACIJOM"""
+    """Generate video from image - SA ROTACIJOM kroz sve provajdere"""
     global video_provider_index
     
     errors = []
-    # Probaj img2video provajdere
-    for i, provider in enumerate(VIDEO_PROVIDERS):
-        if provider["type"] != "img2video":
-            continue
+    
+    for i in range(len(VIDEO_PROVIDERS)):
+        provider = VIDEO_PROVIDERS[(video_provider_index + i) % len(VIDEO_PROVIDERS)]
         try:
-            logging.info(f"🎬 Trying video provider: {provider['name']}")
+            logging.info(f"🎬 Trying: {provider['name']}")
             client = Client(provider["space"], verbose=False)
             
             result = client.predict(
@@ -540,63 +538,36 @@ def _generate_video_sync(image_path: str) -> str:
                 fps_id=6,
                 api_name=provider["api"]
             )
-            logging.info(f"✅ Video generated with {provider['name']}")
+            
+            # Rotate for next time
+            video_provider_index = (video_provider_index + 1) % len(VIDEO_PROVIDERS)
+            logging.info(f"✅ Video done with {provider['name']}")
             return result
             
         except Exception as e:
-            error_msg = str(e)[:100]
+            error_msg = str(e)[:80]
             errors.append(f"{provider['name']}: {error_msg}")
-            logging.warning(f"❌ {provider['name']} failed: {error_msg}")
+            logging.warning(f"❌ {provider['name']}: {error_msg}")
             continue
     
-    raise Exception(f"All video providers failed: {'; '.join(errors)}")
+    raise Exception(f"All {len(VIDEO_PROVIDERS)} video providers failed!")
 
 def _generate_text_to_video_sync(prompt: str) -> str:
-    """Generate video from text - SA ROTACIJOM"""
-    global video_provider_index
+    """Generate video from text: Image -> Animate"""
+    logging.info(f"🎬 Text-to-Video: {prompt[:50]}")
     
-    errors = []
+    # Step 1: Generate image (16:9 for video)
+    logging.info("📸 Step 1: Generating image...")
+    img_result = _generate_sync(prompt, "flux_schnell", 1024, 576)
+    image_path = img_result[0]
+    logging.info(f"✅ Image ready: {image_path}")
     
-    # Prvo probaj direktan text-to-video (T2V-Turbo)
-    for provider in VIDEO_PROVIDERS:
-        if provider["type"] == "text2video":
-            try:
-                logging.info(f"🎬 Trying T2V: {provider['name']}")
-                client = Client(provider["space"], verbose=False)
-                
-                result = client.predict(
-                    prompt=prompt,
-                    guidance_scale=7.5,
-                    percentage=0.5,
-                    num_inference_steps=4,
-                    num_frames=16,
-                    seed=0,
-                    randomize_seed=True,
-                    param_dtype="bf16",
-                    api_name=provider["api"]
-                )
-                logging.info(f"✅ T2V success with {provider['name']}")
-                return result[0] if isinstance(result, tuple) else result
-                
-            except Exception as e:
-                error_msg = str(e)[:100]
-                errors.append(f"{provider['name']}: {error_msg}")
-                logging.warning(f"❌ {provider['name']} failed: {error_msg}")
+    # Step 2: Animate image
+    logging.info("🎬 Step 2: Animating...")
+    video_path = _generate_video_sync(image_path)
+    logging.info(f"✅ Video ready: {video_path}")
     
-    # Fallback: generiši sliku pa animiraj
-    logging.info("🔄 Fallback: Image -> Video")
-    try:
-        # Generiši sliku sa rotacijom
-        img_result = _generate_sync(prompt, "flux_schnell", 1024, 576)
-        image_path = img_result[0]
-        
-        # Animiraj
-        return _generate_video_sync(image_path)
-        
-    except Exception as e:
-        errors.append(f"Fallback: {str(e)[:100]}")
-    
-    raise Exception(f"All video methods failed: {'; '.join(errors)}")
+    return video_path
 
 async def generate_video_from_image(image_path: str) -> str:
     """Async wrapper for image-to-video"""
